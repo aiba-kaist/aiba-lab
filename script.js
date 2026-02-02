@@ -45,56 +45,58 @@ window.addEventListener('popstate', () => {
     showSection(hash);
 });
 
-// Initialize - show section based on URL hash or default to 'about'
+// Generic image fallback: try jpg <-> png, then run callback
+function setupImageFallback(img, onFinalFail) {
+    img.dataset.tried = '';
+    img.onerror = function() {
+        const src = this.src;
+        if (!this.dataset.tried) {
+            this.dataset.tried = 'yes';
+            if (src.endsWith('.jpg')) {
+                this.src = src.replace('.jpg', '.png');
+            } else {
+                this.src = src.replace('.png', '.jpg');
+            }
+        } else {
+            onFinalFail(this);
+        }
+    };
+    // Handle images that already failed before handler was attached
+    if (img.complete && img.naturalHeight === 0 && img.src) {
+        img.onerror();
+    }
+}
+
+// Initialize
 document.addEventListener('DOMContentLoaded', () => {
     const hash = window.location.hash.substring(1) || 'about';
     showSection(hash);
     
-    // Handle member photos: try jpg, then png, then show placeholder
+    // Handle member photos
     document.querySelectorAll('.member-photo img').forEach(img => {
-        img.onerror = function() {
-            const src = this.src;
-            if (src.endsWith('.jpg')) {
-                // Try png instead
-                this.src = src.replace('.jpg', '.png');
-            } else {
-                // Show placeholder
-                this.style.display = 'none';
-                const placeholder = this.nextElementSibling;
-                if (placeholder) placeholder.style.display = 'flex';
-            }
-        };
+        setupImageFallback(img, function(el) {
+            el.style.display = 'none';
+            const placeholder = el.nextElementSibling;
+            if (placeholder) placeholder.style.display = 'flex';
+        });
     });
     
-    // Handle partner logos: try png, then jpg, then show placeholder
+    // Handle partner logos
     document.querySelectorAll('.logo-item img').forEach(img => {
-        img.onerror = function() {
-            const src = this.src;
-            if (src.endsWith('.png')) {
-                // Try jpg instead
-                this.src = src.replace('.png', '.jpg');
-            } else {
-                // Show placeholder
-                this.style.display = 'none';
-                const placeholder = this.nextElementSibling;
-                if (placeholder) placeholder.style.display = 'flex';
-            }
-        };
+        setupImageFallback(img, function(el) {
+            el.style.display = 'none';
+            const placeholder = el.nextElementSibling;
+            if (placeholder) placeholder.style.display = 'flex';
+        });
     });
     
-    // Handle gallery images: try jpg, then png, then show placeholder
+    // Handle gallery images
     document.querySelectorAll('.gallery-item img').forEach(img => {
-        img.onerror = function() {
-            const src = this.src;
-            if (src.endsWith('.jpg')) {
-                // Try png instead
-                this.src = src.replace('.jpg', '.png');
-            } else {
-                // Show placeholder
-                const alt = this.alt || 'Photo';
-                this.parentElement.innerHTML = '<div class="gallery-placeholder">' + alt + '</div>';
-            }
-        };
+        setupImageFallback(img, function(el) {
+            const caption = el.nextElementSibling;
+            const alt = caption ? caption.textContent : (el.alt || 'Photo');
+            el.parentElement.innerHTML = '<div class="gallery-placeholder">' + alt + '</div>';
+        });
     });
 });
 
@@ -106,11 +108,9 @@ pubTabs.forEach(tab => {
     tab.addEventListener('click', function() {
         const target = this.getAttribute('data-target');
         
-        // Update active tab
         pubTabs.forEach(t => t.classList.remove('active'));
         this.classList.add('active');
         
-        // Show target content
         pubContents.forEach(content => {
             if (content.id === target) {
                 content.classList.add('active');
